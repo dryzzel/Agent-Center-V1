@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DOV Agent Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanilla-datatables@latest/dist/vanilla-dataTables.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <button id="themeToggleBtn" class="theme-toggle" title="Toggle Dark Mode">🌙</button>
+  <div id="notification-container"></div>
+  <!-- 
+    PANTALLA DE LOGIN
+    Punto de entrada de la aplicación. Maneja la autenticación de usuarios (Admin y Agentes).
+  -->
+  <div id="loginScreen" class="screen">
+    <div class="login-container">
+      <h1 class="login-title"><i data-feather="shield"></i> DOV Agent Center</h1>
+      <input type="text" id="username" class="login-input" placeholder="Username" autocomplete="username">
+      <input type="password" id="password" class="login-input" placeholder="Password" autocomplete="current-password">
+      <button id="loginBtn" class="login-btn">Login</button>
+      <div id="loginError" class="login-error" role="alert" aria-live="polite">Incorrect credentials</div>
+    </div>
+  </div>
+
+  <!-- 
+    PANTALLA PRINCIPAL (AGENTES)
+    Interfaz de trabajo para los agentes. Contiene:
+    - Panel Izquierdo: Navegación, estadísticas de sesión e historial.
+    - Panel Central: Visualización y gestión de leads.
+    - Panel Derecho: Filtros y lista de callbacks.
+  -->
+  <div id="appScreen" class="screen">
+    <div id="leftPanel">
+      <h3 class="panel-title"><i data-feather="bar-chart-2"></i> Control Panel</h3>
+
+      <div id="navigationContainer" style="display:none;">
+        <h3 class="panel-subtitle"><i data-feather="navigation"></i> Navigation</h3>
+        <div style="margin-bottom: 12px;">
+          <input type="search" id="searchInput" class="form-input" placeholder="🔍 Search in list...">
+        </div>
+        <input type="number" id="rowInput" placeholder="Row number" min="1" />
+        <button id="goToRowBtn">Go to row</button>
+        <div class="current-position" id="currentPosition">-</div>
+
+        <div class="checkbox-container">
+          <input type="checkbox" id="autoNextCheckbox" />
+          <label for="autoNextCheckbox" class="checkbox-label">Auto-advance</label>
+        </div>
+
+        <div class="checkbox-container">
+          <input type="checkbox" id="autoCallCheckbox" />
+          <label for="autoCallCheckbox" class="checkbox-label">Auto-call</label>
+        </div>
+      </div>
+
+      <div id="counterContainer" style="display:none;">
+        <h3 class="panel-subtitle"><i data-feather="activity"></i> Session Stats</h3>
+        <div id="counters"></div>
+      </div>
+
+      <h3 class="panel-subtitle"><i data-feather="book-open"></i> History</h3>
+      <div id="history">No records yet.</div>
+      <div class="button-group">
+        <button id="clearHistoryBtn" class="small-btn danger-btn"><i data-feather="trash-2"></i> Clear History</button>
+        <button id="clearDispositionBtn" class="small-btn danger-btn" style="display:none;"><i data-feather="trash"></i>
+          Clear Stats</button>
+        <button id="logoutBtn" class="small-btn"><i data-feather="log-out"></i> Logout</button>
+      </div>
+    </div>
+
+    <div id="main">
+      <div id="dataContainer" style="display:none;"></div>
+      <div id="controls" style="display:none;">
+        <button id="prevBtn" title="Previous"><i data-feather="arrow-left"></i></button>
+        <button id="nextBtn" title="Next"><i data-feather="arrow-right"></i></button>
+
+        <button id="exportSummaryBtn" title="Export Summary"><i data-feather="file-text"></i></button>
+        <button id="toggleFilterBtn" title="Show Filters"><i data-feather="filter"></i></button>
+        <button id="toggleCallbacksBtn" title="Show Callbacks"><i data-feather="phone"></i></button>
+        <button id="viewHistoryBtn" title="View History"><i data-feather="clock"></i></button>
+        <button id="openFormBtn" class="success-btn" title="Fill Format"
+          style="border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; padding: 0;"><i
+            data-feather="clipboard"></i></button>
+      </div>
+    </div>
+
+    <div id="rightPanel">
+      <div class="filter-section">
+        <h3 class="panel-subtitle"><i data-feather="filter"></i> Disposition Filter</h3>
+        <div class="filter-options" id="filterOptions">
+          <p style="text-align:center; color:var(--subtext);">No dispositions</p>
+        </div>
+        <div class="filter-stats" id="filterStats">Showing: 0 of 0</div>
+        <div class="filter-actions">
+          <button id="applyFilterBtn" class="filter-btn"><i data-feather="check"></i> Apply Filter</button>
+          <button id="selectAllBtn" class="filter-btn secondary"><i data-feather="check-square"></i> Select All</button>
+          <button id="clearFilterBtn" class="filter-btn secondary"><i data-feather="x-square"></i> Clear Filter</button>
+          <button id="hideFilterBtn" class="filter-btn secondary"><i data-feather="eye-off"></i> Hide</button>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <h3 class="panel-subtitle"><i data-feather="users"></i> Filtered Contacts</h3>
+        <div id="filteredContactsList" style="max-height: 400px; overflow-y: auto;">
+          <p style="text-align: center; color: var(--subtext);">No filtered contacts</p>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <h3 class="panel-subtitle"><i data-feather="phone-call"></i> Pending Callbacks</h3>
+        <button id="exportCallbacksBtn" class="small-btn"><i data-feather="download"></i> Export</button>
+        <div id="callbacksList" style="max-height: 400px; overflow-y: auto;">
+          <p style="text-align: center; color: var(--subtext);">No pending callbacks</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 
+    PANTALLA DE ADMINISTRADOR
+    Dashboard completo para la gestión del call center. Incluye:
+    - Métricas Globales y de RingCentral.
+    - Gestión de Usuarios (Crear, Editar, Eliminar).
+    - Gestión de Leads (Subida, Asignación, Filtrado).
+  -->
+  <div id="adminScreen" class="screen">
+    <div class="admin-hub">
+      <div class="admin-header">
+        <h1><i data-feather="settings"></i> Admin Hub</h1>
+        <div class="button-group">
+          <button id="adminRefreshBtn"><i data-feather="refresh-cw"></i> Refresh</button>
+          <button id="adminLogoutBtn"><i data-feather="log-out"></i> Logout</button>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h2 class="section-title"><i data-feather="user-plus"></i> Create New User</h2>
+        <div class="form-grid">
+          <div>
+            <label class="form-label">Username</label>
+            <input type="text" id="newUsername" class="form-input" placeholder="Username">
+          </div>
+          <div>
+            <label class="form-label">Password</label>
+            <input type="password" id="newPassword" class="form-input" placeholder="Password">
+          </div>
+          <div>
+            <label class="form-label">Email</label>
+            <input type="email" id="newEmail" class="form-input" placeholder="email@example.com">
+          </div>
+          <button id="createUserBtn" class="login-btn"><i data-feather="plus"></i> Create</button>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h2 class="section-title"><i data-feather="upload-cloud"></i> Upload Leads</h2>
+        <div class="form-grid">
+          <div>
+            <label class="form-label">Select List</label>
+            <div style="display: flex; gap: 5px;">
+              <select id="upload-list-name" class="form-input" style="flex:1;">
+                <option value="Dispos Manual">Dispos Manual</option>
+                <option value="Prestige">Prestige</option>
+                <option value="Locktight">Locktight</option>
+                <option value="FHIA">FHIA</option>
+                <option value="Clean Energy">Clean Energy</option>
+                <option value="Orphan">Orphan</option>
+              </select>
+              <button id="add-custom-list-btn" class="login-btn secondary-btn" style="width: auto; padding: 0 10px;"
+                title="Add new list name">+</button>
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Custom ID <span style="color:var(--danger)">*</span></label>
+            <input type="text" id="upload-custom-id" class="form-input" placeholder="Internal Batch ID (Required)">
+          </div>
+          <div>
+            <label class="form-label">CSV File</label>
+            <input type="file" id="upload-csv-file" class="form-input" accept=".csv">
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button id="upload-leads-btn" class="login-btn" style="flex: 1;"><i data-feather="upload"></i>
+              Upload</button>
+            <button id="upload-info-btn" class="login-btn secondary-btn"
+              style="width: auto; padding: 0 12px; font-size: 0.8em; height: 45px; margin-top: 20px;"
+              title="Important Info"><i data-feather="info"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- UPLOAD INFO MODAL -->
+      <div id="uploadInfoModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+          <h2 class="section-title"><i data-feather="info"></i> CSV Format Guide</h2>
+          <p>For the leads to display correctly, your CSV file must have the following headers (order doesn't matter):
+          </p>
+          <ul style="text-align: left; margin-top: 10px; margin-bottom: 20px; line-height: 1.6;">
+            <li><strong>Date Sent</strong></li>
+            <li><strong>Prev. Company</strong></li>
+            <li><strong>Name</strong></li>
+            <li><strong>Address</strong></li>
+            <li><strong>Phone</strong></li>
+            <li><strong>Email or Second Phone</strong></li>
+            <li><strong>Product</strong></li>
+            <li><strong>Prev. Status</strong></li>
+            <li><strong>Call Log</strong></li>
+            <li><strong>Call Dispo</strong></li>
+            <li><strong>Comments</strong></li>
+          </ul>
+          <p><strong>Example:</strong><br>
+            <code>Date Sent,Prev. Company,Name,Address,Phone,Email or Second Phone,Product,Prev. Status,Call Log,Call Dispo,Comments<br>
+      2025-01-01,OldCo,Juan Perez,123 Main St,5551234567,juan@example.com,Windows,Interested,Called once,NA,Needs follow up</code>
+          </p>
+          <div class="modal-actions">
+            <button id="closeInfoModalBtn" class="login-btn secondary-btn"><i data-feather="x"></i> Close</button>
+          </div>
+        </div>
+      </div>
+
+
+
+      <div class="admin-section">
+        <h2 class="section-title"><i data-feather="search"></i> Lead Management</h2>
+        <div class="form-grid">
+          <div>
+            <label class="form-label">Search</label>
+            <input type="text" id="lead-filter-search" class="form-input" placeholder="Name or Phone">
+          </div>
+          <div>
+            <label class="form-label">Custom ID</label>
+            <select id="lead-filter-custom-id" class="form-input">
+              <option value="">All Custom IDs</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Start Date</label>
+            <input type="date" id="lead-filter-start-date" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">End Date</label>
+            <input type="date" id="lead-filter-end-date" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Filter by Disposition</label>
+
+            <div class="custom-dropdown" id="disposition-dropdown">
+              <button class="form-input" id="disposition-dropdown-btn"
+                style="text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                <span>All Dispositions</span>
+                <i data-feather="chevron-down" style="width: 16px; height: 16px;"></i>
+              </button>
+              <div class="dropdown-content" id="disposition-dropdown-content">
+                <!-- Checkboxes will be injected here -->
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Filter by Agent</label>
+            <select id="lead-filter-agent" class="form-input">
+              <option value="">All Agents</option>
+              <option value="unassigned">Not Assigned</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Filter by Product</label>
+            <select id="lead-filter-product" class="form-input">
+              <option value="">All Products</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Filter by List</label>
+            <select id="lead-filter-list" class="form-input">
+              <option value="">All Lists</option>
+              <option value="Dispos Manual">Dispos Manual</option>
+              <option value="Prestige">Prestige</option>
+              <option value="Locktight">Locktight</option>
+              <option value="FHIA">FHIA</option>
+              <option value="Clean Energy">Clean Energy</option>
+              <option value="Orphan">Orphan</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Filter by Prev. Company</label>
+            <select id="lead-filter-prev-company" class="form-input">
+              <option value="">All Companies</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Sort by Date</label>
+            <select id="lead-sort-order" class="form-input">
+              <option value="desc">Newest First</option>
+              <option value="asc">Oldest First</option>
+            </select>
+          </div>
+          <div
+            style="display: flex; gap: 10px; align-items: center; justify-content: space-between; grid-column: 1 / -1; width: 100%;">
+            <button id="filter-leads-btn" class="login-btn"
+              style="width: 300px; padding: 0 24px; height: 45px; margin-top: 20px;"><i data-feather="filter"></i>
+              Filter
+              Leads</button>
+            <button id="deduplicate-leads-btn" class="login-btn danger-btn"
+              style="width: 45px; height: 45px; padding: 0; margin-top: 20px; display: flex; align-items: center; justify-content: center;"
+              title="Remove Duplicates"><i data-feather="trash-2"></i></button>
+          </div>
+        </div>
+        <div id="all-leads-container" style="margin-top:20px;">
+          <div class="form-grid" style="margin-top:10px; border-top: 1px solid var(--border); padding-top: 10px;">
+            <div>
+              <label class="form-label">Reassign Selected to</label>
+              <select id="reassign-lead-agent" class="form-input"></select>
+            </div>
+            <button id="reassign-selected-leads-btn" class="login-btn secondary-btn"><i data-feather="shuffle"></i>
+              Reassign Selected</button>
+          </div>
+          <div id="all-leads-list" style="margin-top:10px;">
+            <p style="text-align: center; color: var(--subtext);">Filter to display leads</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h2 class="section-title"><i data-feather="pie-chart"></i> Disposition Summary (Global)</h2>
+
+        <!-- Global Stats Grid -->
+        <div class="stats-grid" style="margin-bottom: 24px;">
+          <div class="stat-card">
+            <h4 class="stat-title">Total Calls</h4>
+            <p class="stat-value" id="globalTotalCalls">0</p>
+          </div>
+          <div class="stat-card">
+            <h4 class="stat-title">Contact Rate</h4>
+            <p class="stat-value" id="globalContactRate">0%</p>
+          </div>
+          <div class="stat-card">
+            <h4 class="stat-title">Lead Conversion</h4>
+            <p class="stat-value" id="globalConversionRate">0%</p>
+          </div>
+        </div>
+
+        <div id="dispositionStatsList" class="stats-grid"></div>
+      </div>
+
+      <div class="admin-section">
+        <h2 class="section-title"><i data-feather="bar-chart"></i> Agent Performance (Conversion Rate)</h2>
+        <div style="width: 100%; max-width: 800px; margin: auto;">
+          <canvas id="agentPerformanceChart"></canvas>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h2 class="section-title"><i data-feather="award"></i> Top Performers (Leaderboard)</h2>
+        <div id="leaderboardContainer" class="users-grid">
+          <!-- Leaderboard items will be injected here -->
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 class="section-title" style="margin-bottom: 0;"><i data-feather="phone-forwarded"></i> RingCentral Metrics
+          </h2>
+          <select id="rcTimeRange" class="form-input" style="width: auto; padding: 4px 8px; margin-right: 8px;">
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="last7">Last 7 Days</option>
+            <option value="last30">Last 30 Days</option>
+          </select>
+          <select id="rcHoursWorked" class="form-input" style="width: auto; padding: 4px 8px; margin-right: 8px;"
+            title="Hours Worked">
+            <option value="1">1 Hour</option>
+            <option value="2">2 Hours</option>
+            <option value="3">3 Hours</option>
+            <option value="4">4 Hours</option>
+            <option value="5">5 Hours</option>
+            <option value="6">6 Hours</option>
+            <option value="7">7 Hours</option>
+            <option value="8" selected>8 Hours</option>
+          </select>
+          <button id="rcRefreshBtn" class="btn-primary" style="padding: 4px 12px; font-size: 0.85rem;">
+            <i data-feather="refresh-cw"></i> Load Data
+          </button>
+        </div>
+        <div class="stats-grid"
+          style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+          <div class="stat-card">
+            <h4 class="stat-title">Global Calls/Hour</h4>
+            <p class="stat-value" id="rcGlobalCallsPerHour">0</p>
+          </div>
+          <div class="stat-card">
+            <h4 class="stat-title">Global Avg Time Between Calls</h4>
+            <p class="stat-value" id="rcGlobalTimeBetweenCalls">0s</p>
+          </div>
+        </div>
+        <div id="rcAgentMetrics" class="users-grid">
+          <!-- RC Agent metrics will be injected here -->
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="refresh-info" id="lastUpdate">Last update: Never</div>
+        <div id="usersSummary" class="users-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE OPTIONS MODAL -->
+  <div id="deleteOptionsModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <h2 class="section-title"><i data-feather="trash-2"></i> Delete Options</h2>
+      <p style="margin-bottom: 20px;">What would you like to do?</p>
+      <div style="display: flex; gap: 10px; justify-content: center; flex-direction: column;">
+        <button id="btnDeleteSelected" class="login-btn danger-btn"><i data-feather="check-square"></i> Delete Selected
+          Leads</button>
+        <button id="btnDeleteDuplicates" class="login-btn secondary-btn"><i data-feather="copy"></i> Delete
+          Duplicates</button>
+      </div>
+      <div class="modal-actions" style="margin-top: 20px;">
+        <button id="closeDeleteOptionsModalBtn" class="login-btn secondary-btn"><i data-feather="x"></i> Cancel</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- PASSWORD CONFIRMATION MODAL -->
+  <div id="passwordConfirmationModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <h2 class="section-title"><i data-feather="lock"></i> Security Check</h2>
+      <p style="margin-bottom: 20px;">Please enter your admin password to confirm this action.</p>
+      <div>
+        <input type="password" id="confirmActionPassword" class="form-input" placeholder="Admin Password"
+          style="text-align: center;">
+      </div>
+      <div class="modal-actions" style="margin-top: 20px;">
+        <button id="btnConfirmPassword" class="login-btn danger-btn">Confirm</button>
+        <button id="btnClosePasswordModal" class="login-btn secondary-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DUPLICATE PREVIEW MODAL -->
+  <div id="duplicatePreviewModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 800px; max-height: 80vh; display: flex; flex-direction: column;">
+      <h2 class="section-title"><i data-feather="copy"></i> Duplicate Leads Preview</h2>
+      <p id="duplicateCountMsg" style="margin-bottom: 10px;">Found 0 duplicate sets.</p>
+
+      <div id="duplicatePreviewList"
+        style="flex: 1; overflow-y: auto; margin-bottom: 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);">
+        <!-- Duplicates will be listed here -->
+      </div>
+
+      <div class="modal-actions">
+        <button id="confirmDeleteDuplicatesBtn" class="login-btn danger-btn"><i data-feather="trash-2"></i> Delete All
+          Duplicates</button>
+        <button id="closeDuplicateModalBtn" class="login-btn secondary-btn"><i data-feather="x"></i> Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN EDIT LEAD MODAL -->
+  <div id="adminEditLeadModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto;">
+      <h2 class="section-title"><i data-feather="edit-2"></i> Edit Lead</h2>
+      <input type="hidden" id="editLeadId">
+
+      <div class="form-grid">
+        <div>
+          <label class="form-label">Name</label>
+          <input type="text" id="editLeadName" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Phone</label>
+          <input type="text" id="editLeadPhone" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Email</label>
+          <input type="text" id="editLeadEmail" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Product</label>
+          <input type="text" id="editLeadProduct" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Disposition</label>
+          <!-- Allow manual typing or select? Let's use a datalist or similar if possible, or just text input for max flexibility for admins. 
+                Or better, a standard select with common dispos but allowing custom input might be tricky. 
+                Let's stick to a robust select but include 'Cancelled Sale' specifically requested. -->
+          <select id="editLeadDisposition" class="form-input">
+            <option value="">-- No Disposition --</option>
+            <option value="Sale">Sale</option>
+            <option value="Cancelled Sale">Cancelled Sale</option>
+            <option value="Callback">Callback</option>
+            <option value="NA">NA - No Answer</option>
+            <option value="VM">VM - Voicemail</option>
+            <option value="DC">DC - Disconnected</option>
+            <option value="WN">WN - Wrong Number</option>
+            <option value="NI">NI - Not Interested</option>
+            <option value="DNC">DNC - Do Not Call</option>
+            <option value="FUTURE">Future Lead</option>
+            <option value="ND/SD">Next Day / Same Day</option>
+            <!-- Add other common ones -->
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Prev. Company</label>
+          <input type="text" id="editLeadPrevCompany" class="form-input">
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label class="form-label">List Name</label>
+          <input type="text" id="editLeadListName" class="form-input">
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label class="form-label">Address</label>
+          <input type="text" id="editLeadAddress" class="form-input">
+        </div>
+      </div>
+
+      <div style="margin-top: 24px;">
+        <h3 class="panel-subtitle"><i data-feather="clock"></i> History</h3>
+        <div id="adminLeadHistoryList"
+          style="max-height: 200px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); padding: 10px; border-radius: 6px;">
+          <p style="text-align:center; color:var(--subtext);">No history available</p>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 20px;">
+        <button id="saveLeadChangesBtn" class="login-btn"><i data-feather="save"></i> Save Changes</button>
+        <button id="closeAdminEditModalBtn" class="login-btn secondary-btn"><i data-feather="x"></i> Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT USER MODAL -->
+  <div id="editUserModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <h2 class="section-title"><i data-feather="edit"></i> Edit User</h2>
+      <input type="hidden" id="editUserId">
+      <div>
+        <label class="form-label">Username</label>
+        <input type="text" id="editUserUsername" class="form-input">
+      </div>
+      <div style="margin-top: 16px;">
+        <label class="form-label">Password</label>
+        <input type="password" id="editUserPassword" class="form-input" placeholder="Leave blank to keep current">
+      </div>
+      <div style="margin-top: 16px;">
+        <label class="form-label">Email</label>
+        <input type="email" id="editUserEmail" class="form-input">
+      </div>
+      <div style="margin-top: 16px;">
+        <label class="form-label">RingCentral Extension ID</label>
+        <input type="text" id="editUserRcExtensionId" class="form-input" placeholder="e.g. 101">
+      </div>
+      <div style="margin-top: 16px;">
+        <label class="form-label">Role</label>
+        <select id="editUserRole" class="form-input">
+          <option value="agent">Agent</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button id="saveUserChangesBtn" class="login-btn"><i data-feather="save"></i> Save Changes</button>
+        <button id="closeModalBtn" class="login-btn secondary-btn"><i data-feather="x"></i> Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AGENT PROFILE MODAL -->
+  <div id="agentProfileModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 1200px; width: 95%; max-height: 90vh; overflow-y: auto;">
+      <h2 class="section-title" id="agentProfileTitle"><i data-feather="user"></i> Agent Profile</h2>
+      <input type="hidden" id="agentProfileId">
+
+      <div class="form-grid" style="margin-bottom: 20px;">
+        <div>
+          <label class="form-label">Start Date</label>
+          <input type="date" id="statsStartDate" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">End Date</label>
+          <input type="date" id="statsEndDate" class="form-input">
+        </div>
+        <button id="getAgentStatsBtn" class="login-btn"><i data-feather="bar-chart-2"></i> Get Stats</button>
+      </div>
+
+      <div id="agentStatsContainer" style="display: none;">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h4 class="stat-title">Contacts Called</h4>
+            <p class="stat-value" id="statsTotalCalls">0</p>
+          </div>
+          <div class="stat-card">
+            <h4 class="stat-title">Contact Rate</h4>
+            <p class="stat-value" id="statsContactRate">0%</p>
+          </div>
+          <div class="stat-card">
+            <h4 class="stat-title">Lead Conversion</h4>
+            <p class="stat-value" id="statsLeadConversion">0%</p>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
+          <div style="width: 100%; max-width: 400px; margin: auto;">
+            <canvas id="agentDispositionChart"></canvas>
+          </div>
+          <div id="agentDispositionStatsList" class="stats-grid" style="align-content: start;"></div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="closeProfileModalBtn" class="login-btn secondary-btn"><i data-feather="x"></i> Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEAD HISTORY MODAL -->
+  <div id="leadHistoryModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <h2 class="section-title"><i data-feather="clock"></i> Lead History</h2>
+      <div id="leadHistoryList" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
+        <!-- History items will be injected here -->
+      </div>
+      <div class="modal-actions">
+        <button id="closeHistoryModalBtn" class="login-btn secondary-btn"><i data-feather="x"></i> Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PENDING CALLBACKS MODAL -->
+  <div id="callbacksModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 800px;">
+      <h2 class="section-title"><i data-feather="phone-call"></i> Pending Callbacks</h2>
+      <div id="callbacksList" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
+        <!-- Callbacks will be injected here -->
+      </div>
+      <div class="modal-actions">
+        <button id="exportCallbacksBtn" class="login-btn"><i data-feather="download"></i> Export</button>
+        <button id="closeCallbacksModalBtn" class="login-btn secondary-btn"><i data-feather="x"></i> Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT SUMMARY MODAL -->
+  <div id="exportSummaryModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 600px;">
+      <h2 class="section-title"><i data-feather="file-text"></i> Disposition Summary</h2>
+      <pre id="exportSummaryContent"
+        style="background: var(--bg); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; color: var(--text);"></pre>
+      <div class="modal-actions">
+        <button id="copySummaryBtn" class="login-btn"><i data-feather="copy"></i> Copy</button>
+        <button id="closeExportSummaryModalBtn" class="login-btn secondary-btn"><i data-feather="x"></i> Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEAD FORM MODAL -->
+  <div id="leadFormModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+      <h2 class="section-title"><i data-feather="clipboard"></i> Lead Format</h2>
+      <div class="form-grid">
+        <div>
+          <label class="form-label">Company</label>
+          <select id="formCompany" class="form-input">
+            <option value="USA Windows & Doors">USA Windows & Doors</option>
+            <option value="FHIA Remodeling">FHIA Remodeling</option>
+            <option value="Prestige Windows & Doors">Prestige Windows & Doors</option>
+            <option value="LockTight">LockTight</option>
+            <option value="Reece Windows">Reece Windows</option>
+            <option value="Best Price Contractors">Best Price Contractors</option>
+            <option value="Factory Direct Renovations">Factory Direct Renovations</option>
+            <option value="Bilantar Windows">Bilantar Windows</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Team</label>
+          <select id="formTeam" class="form-input">
+            <option value="Alpha">Alpha</option>
+            <option value="Beta">Beta</option>
+            <option value="Gamma">Gamma</option>
+            <option value="Delta">Delta</option>
+            <option value="Epsilon">Epsilon</option>
+            <option value="Zeta">Zeta</option>
+            <option value="Eta">Eta</option>
+            <option value="Theta">Theta</option>
+            <option value="Iota">Iota</option>
+            <option value="Kappa">Kappa</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Agent Code</label>
+          <input type="text" id="formAgentCode" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Full Name</label>
+          <input type="text" id="formFullName" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Phone Number</label>
+          <input type="text" id="formPhone" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Language</label>
+          <select id="formLanguage" class="form-input">
+            <option value="English">English</option>
+            <option value="Spanish">Spanish</option>
+            <option value="Bilingual">Bilingual</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Marital Status</label>
+          <select id="formMaritalStatus" class="form-input">
+            <option value="Married">Married</option>
+            <option value="Single">Single</option>
+            <option value="Widow/er">Widow/er</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Address</label>
+          <input type="text" id="formAddress" class="form-input">
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label class="form-label">Product</label>
+          <div id="formProductsContainer">
+            <!-- Dynamic products will be added here -->
+          </div>
+          <button id="addProductBtn" class="small-btn" style="width: auto; margin-top: 8px;"><i data-feather="plus"></i>
+            Add Product</button>
+        </div>
+        <div>
+          <label class="form-label">Appt. Date & Time</label>
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <input type="text" id="formApptMonth" class="form-input" placeholder="MM"
+              style="width: 50px; text-align: center;">
+            <span style="font-weight: bold; color: var(--subtext);">/</span>
+            <input type="text" id="formApptDay" class="form-input" placeholder="DD"
+              style="width: 50px; text-align: center;">
+            <span style="font-weight: bold; color: var(--subtext);">@</span>
+            <input type="text" id="formApptHour" class="form-input" placeholder="HH"
+              style="width: 50px; text-align: center;">
+            <select id="formApptAmPm" class="form-input" style="width: 70px;">
+              <option value="am">am</option>
+              <option value="pm">pm</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Conf. by</label>
+          <input type="text" id="formConfBy" class="form-input">
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label class="form-label">Master Notes</label>
+          <textarea id="formMasterNotes" class="form-input" rows="3"></textarea>
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label class="form-label">CRM Notes</label>
+          <textarea id="formCrmNotes" class="form-input" rows="3"></textarea>
+        </div>
+        <div>
+          <label class="form-label">VA Tag</label>
+          <input type="text" id="formVaTag" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Lead Quality (1-5)</label>
+          <select id="formLeadQuality" class="form-input">
+            <option value="1">1 *</option>
+            <option value="2">2 **</option>
+            <option value="3">3 ***</option>
+            <option value="4">4 ****</option>
+            <option value="5">5 *****</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Source</label>
+          <select id="formSource" class="form-input">
+            <option value="Propstream">Propstream</option>
+            <option value="Main Campaign Trainees">Main Campaign Trainees</option>
+            <option value="2 Months+">2 Months+</option>
+            <option value="CPR">CPR</option>
+            <option value="Own-Leads Follow-Up">Own-Leads Follow-Up</option>
+            <option value="Dispos Auto">Dispos Auto</option>
+            <option value="Dispos Manual">Dispos Manual</option>
+            <option value="Call Backs">Call Backs</option>
+            <option value="Dispos SFL">Dispos SFL</option>
+            <option value="Dispos Rest">Dispos Rest</option>
+            <option value="Other">Other</option>
+            <option value="Prestige + SFW">Prestige + SFW</option>
+            <option value="Cancelled Sales">Cancelled Sales</option>
+            <option value="Pre Leads">Pre Leads</option>
+            <option value="Locktight Auto">Locktight Auto</option>
+            <option value="Locktight Manual">Locktight Manual</option>
+            <option value="FHIA Lists">FHIA Lists</option>
+            <option value="CE">CE</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Lead Status</label>
+          <select id="formLeadStatus" class="form-input">
+            <option value="Next Day">Next Day</option>
+            <option value="Same Day">Same Day</option>
+            <option value="2 Days Out">2 Days Out</option>
+            <option value="Future">Future</option>
+            <option value="REGISTER">REGISTER</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="copyFormBtn" class="login-btn"><i data-feather="copy"></i> Copy to Clipboard</button>
+        <button id="closeFormModalBtn" class="login-btn secondary-btn"><i data-feather="x"></i> Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanilla-datatables@latest/dist/vanilla-dataTables.min.js"></script>
+  <script>
+    feather.replace()
+  </script>
+</body>
+
+</html>

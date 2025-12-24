@@ -1,0 +1,6 @@
+node_modules
+.env
+ring central api
+debug_data.js
+debug_dispos.js
+debug_history.js
