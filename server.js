@@ -15,6 +15,8 @@ import { fileURLToPath } from 'url';
 import { randomUUID } from "crypto";
 
 
+import { minify } from 'html-minifier';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -43,9 +45,22 @@ app.set("views", path.join(__dirname, "views"));
 // Serve static files from 'public' directory
 app.use(express.static(path.join(__dirname, "public")));
 
-// Render Main View
+// Render Main View with Minification
 app.get("/", (req, res) => {
-  res.render("index");
+  res.render("index", (err, html) => {
+    if (err) {
+      console.error("View Rendering Error:", err);
+      return res.status(500).send("Server Error");
+    }
+    const minified = minify(html, {
+      removeAttributeQuotes: true,
+      collapseWhitespace: true,
+      removeComments: true,
+      minifyJS: true,
+      minifyCSS: true
+    });
+    res.send(minified);
+  });
 });
 
 const httpServer = createServer(app);

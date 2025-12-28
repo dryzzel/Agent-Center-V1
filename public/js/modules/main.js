@@ -26,6 +26,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Feather icons
     if (window.feather) feather.replace();
+
+    // === Security Hardening ===
+    // Disable Context Menu
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    // Disable Shortcuts (F12, Ctrl+Shift+I, Ctrl+U, Ctrl+S)
+    document.addEventListener('keydown', (e) => {
+        if (
+            e.key === 'F12' ||
+            (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+            (e.ctrlKey && e.shiftKey && e.key === 'J') ||
+            (e.ctrlKey && e.key === 'u')
+        ) {
+            e.preventDefault();
+        }
+    });
 });
 
 async function handleLoginAttempt() {

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "build": "webpack",
     "migrate": "node migrate-users.js",
     "migrate-leads": "node migrate-leads.js"
   },
@@ -19,6 +20,7 @@
     "express-rate-limit": "^8.2.0",
     "fs-extra": "^11.2.0",
     "helmet": "^8.1.0",
+    "html-minifier": "^4.0.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^7.0.0",
     "multer": "^2.0.2",
@@ -26,5 +28,10 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "webpack": "^5.104.1",
+    "webpack-cli": "^6.0.1",
+    "webpack-obfuscator": "^3.6.0"
   }
 }
