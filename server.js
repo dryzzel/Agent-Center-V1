@@ -633,11 +633,10 @@ app.get("/admin/leads", authAdmin, async (req, res) => {
   const query = {};
 
   if (disposition) {
-    if (Array.isArray(disposition)) {
-      query.DISPOSITION = { $in: disposition };
-    } else {
-      query.DISPOSITION = disposition;
-    }
+    let dispos = Array.isArray(disposition) ? disposition : [disposition];
+    // Map 'N/A' to null to find leads without disposition
+    dispos = dispos.map(d => d === 'N/A' ? null : d);
+    query.DISPOSITION = { $in: dispos };
   }
 
   console.log("DEBUG /admin/leads params:", { page: req.query.page, limit: req.query.limit, filters: req.query });

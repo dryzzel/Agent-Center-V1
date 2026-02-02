@@ -536,7 +536,8 @@ export async function loadFilterOptions() {
         }
 
         const dispositions = data.dispositions || [];
-        const allDispositions = [...new Set(['Sale', ...dispositions])].sort();
+        const uniqueDispos = [...new Set(['Sale', ...dispositions])].filter(d => d && d !== 'N/A');
+        const allDispositions = ['N/A', ...uniqueDispos.sort()];
         const dropdownContent = document.getElementById('disposition-dropdown-content');
         dropdownContent.innerHTML = allDispositions.map(d => `
       <div class="dropdown-item">
