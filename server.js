@@ -600,11 +600,13 @@ app.get("/admin/filters/options", authAdmin, async (req, res) => {
     const customIds = await db.collection("leads").distinct("customId");
     const listNames = await db.collection("leads").distinct("listName");
     const dispositions = await db.collection("leads").distinct("DISPOSITION");
+    const languages = await db.collection("leads").distinct("language");
 
     console.log("DEBUG /admin/filters/options:");
     console.log(" - Products found:", products.length);
     console.log(" - Companies found:", companies.length, companies);
     console.log(" - Dispositions found:", dispositions.length, dispositions);
+    console.log(" - Languages found:", languages.length, languages);
 
     // Filter out null/empty values and sort
     const cleanProducts = products.filter(p => p).sort();
@@ -612,13 +614,15 @@ app.get("/admin/filters/options", authAdmin, async (req, res) => {
     const cleanCustomIds = customIds.filter(c => c).sort();
     const cleanListNames = listNames.filter(l => l).sort();
     const cleanDispositions = dispositions.filter(d => d).sort();
+    const cleanLanguages = languages.filter(l => l).sort();
 
     res.json({
       products: cleanProducts,
       companies: cleanCompanies,
       customIds: cleanCustomIds,
       listNames: cleanListNames,
-      dispositions: cleanDispositions
+      dispositions: cleanDispositions,
+      languages: cleanLanguages
     });
   } catch (err) {
     console.error("Error fetching filter options:", err);
@@ -629,7 +633,7 @@ app.get("/admin/filters/options", authAdmin, async (req, res) => {
 // Endpoint principal para obtener leads con filtros avanzados.
 // Soporta filtrado por disposición, agente, producto, fecha, búsqueda de texto y ordenamiento.
 app.get("/admin/leads", authAdmin, async (req, res) => {
-  const { disposition, assignedTo, product, sortBy, sortOrder, startDate, endDate, search, listName, prevCompany, customId } = req.query;
+  const { disposition, assignedTo, product, sortBy, sortOrder, startDate, endDate, search, listName, prevCompany, customId, language } = req.query;
   const query = {};
 
   if (disposition) {
@@ -658,6 +662,7 @@ app.get("/admin/leads", authAdmin, async (req, res) => {
     };
   }
   if (customId) query.customId = customId;
+  if (language) query.language = language;
 
   // Date Range Filter
   if (startDate || endDate) {
@@ -1024,6 +1029,10 @@ app.post("/agent/progress", authAgent, async (req, res) => {
 
     if (updatedRow.callback) {
       updateFields.callback = updatedRow.callback;
+    }
+
+    if (updatedRow.language) {
+      updateFields.language = updatedRow.language;
     }
 
     await db.collection("leads").updateOne(

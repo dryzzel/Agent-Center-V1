@@ -544,6 +544,22 @@ export async function loadFilterOptions() {
         <input type="checkbox" id="dispo-${d}" value="${d}" class="disposition-checkbox">
         <label for="dispo-${d}">${d}</label>
       </div>`).join('');
+
+        // Populate Language Filter
+        const languageSelect = document.getElementById('lead-filter-language');
+        if (languageSelect) {
+            const currentLanguage = languageSelect.value;
+            languageSelect.innerHTML = '<option value="">All Languages</option>';
+            if (data.languages && data.languages.length) {
+                data.languages.forEach(l => {
+                    const opt = document.createElement('option');
+                    opt.value = l;
+                    opt.textContent = l;
+                    languageSelect.appendChild(opt);
+                });
+            }
+            languageSelect.value = currentLanguage; // Restore selection
+        }
     } catch (err) {
         console.error('Error fetching filter options:', err);
     }
@@ -561,6 +577,7 @@ export async function loadAllLeads(page = 1) {
     const endDate = document.getElementById('lead-filter-end-date').value;
     const search = document.getElementById('lead-filter-search').value;
     const customId = document.getElementById('lead-filter-custom-id').value;
+    const language = document.getElementById('lead-filter-language').value;
 
     let queryString = new URLSearchParams();
     if (selectedDispositions.length > 0) selectedDispositions.forEach(d => queryString.append('disposition', d));
@@ -572,6 +589,7 @@ export async function loadAllLeads(page = 1) {
     if (endDate) queryString.append('endDate', endDate);
     if (search) queryString.append('search', search);
     if (customId) queryString.append('customId', customId);
+    if (language) queryString.append('language', language);
     queryString.append('sortBy', 'date');
     queryString.append('sortOrder', sortOrder);
 
@@ -617,6 +635,7 @@ export async function loadAllLeads(page = 1) {
                     <th style="padding:10px;">Disposition</th>
                     <th style="padding:10px;">Callback Date</th>
                     <th style="padding:10px;">Agent</th>
+                    <th style="padding:10px;">Language</th>
                     <th style="padding:10px;">Product</th>
                     <th style="padding:10px;">Last Modified</th>
                     <th style="padding:10px;">Actions</th>
@@ -635,6 +654,7 @@ export async function loadAllLeads(page = 1) {
                 <td style="padding:10px;">${escapeHtml(lead.DISPOSITION || 'N/A')}</td>
                 <td style="padding:10px;">${lead.callbackDate ? new Date(lead.callbackDate).toLocaleString() : 'N/A'}</td>
                 <td style="padding:10px;">${lead.agent ? escapeHtml(lead.agent.username) : 'Unassigned'}</td>
+                <td style="padding:10px;">${escapeHtml(lead.language || 'N/A')}</td>
                 <td style="padding:10px;">${escapeHtml(lead.Product || 'N/A')}</td>
                 <td style="padding:10px;">${lead.Timestamp ? new Date(lead.Timestamp).toLocaleString() : 'N/A'}</td>
                 <td style="padding:10px;">

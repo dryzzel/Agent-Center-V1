@@ -420,6 +420,23 @@ function showRow(index) {
                 <input type="time" id="callbackTime" class="form-input" style="width: auto;">
             </div>
         </div>
+        <div class="row-item">
+          <span class="label">Language: <span style="color:var(--danger)">*</span></span>
+          <div style="display:flex;gap:15px;">
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="radio" name="language" value="English" id="languageEnglish">
+              <span>English</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="radio" name="language" value="Spanish" id="languageSpanish">
+              <span>Spanish</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="radio" name="language" value="Bilingual" id="languageBilingual">
+              <span>Bilingual</span>
+            </label>
+          </div>
+        </div>
         <div class="row-item"><span class="label">Notes:</span><textarea id="notesTextarea" class="form-input" rows="4" placeholder="Write your notes here...">${escapeHtml(row.notes || '')}</textarea></div>
         <div class="row-item"><span class="label">Timestamp:</span><span id="timestamp">${escapeHtml(row['Timestamp'] || '-')}</span></div>
     </div>
@@ -443,6 +460,15 @@ function showRow(index) {
         callbackSection.style.display = 'none';
     }
 
+    // Pre-select language if saved
+    if (row.language === 'English') {
+        document.getElementById('languageEnglish').checked = true;
+    } else if (row.language === 'Spanish') {
+        document.getElementById('languageSpanish').checked = true;
+    } else if (row.language === 'Bilingual') {
+        document.getElementById('languageBilingual').checked = true;
+    }
+
     if (window.feather) feather.replace();
 }
 
@@ -463,6 +489,13 @@ function handleDispositionChange() {
     if (!specialDispositions.includes(disposition)) {
         const autoNext = document.getElementById('autoNextCheckbox');
         if (autoNext && autoNext.checked) {
+            // Validate language selection before auto-advancing
+            const selectedLanguage = document.querySelector('input[name="language"]:checked');
+            if (!selectedLanguage) {
+                showToast('Please select a language (English or Spanish) before advancing', 'error');
+                return;
+            }
+
             const currentData = state.isFilterActive ? state.filteredData : state.data;
             if (state.currentIndex < currentData.length - 1) setTimeout(() => nextRow(), 300);
         }
@@ -484,6 +517,8 @@ function saveDisposition() {
     const notes = document.getElementById('notesTextarea').value;
     const callbackDate = document.getElementById('callbackDate').value;
     const callbackTime = document.getElementById('callbackTime').value;
+    const selectedLanguage = document.querySelector('input[name="language"]:checked');
+    const language = selectedLanguage ? selectedLanguage.value : null;
 
     let callback = null;
     const specialDispositions = ['Callback', 'FUTURE', 'ND/SD'];
@@ -496,7 +531,8 @@ function saveDisposition() {
         DISPOSITION: disposition,
         Timestamp: new Date().toISOString(),
         notes: notes,
-        callback: callback
+        callback: callback,
+        language: language
     };
 
     Object.assign(state.data.find(d => d._id === originalIndex), updatedRow);
@@ -567,6 +603,13 @@ async function saveProgressOnBackend(currentIndex, updatedRow, originalIndex) {
 }
 
 function nextRow() {
+    // Validate language selection before advancing
+    const selectedLanguage = document.querySelector('input[name="language"]:checked');
+    if (!selectedLanguage) {
+        showToast('Please select a language (English or Spanish) before advancing', 'error');
+        return;
+    }
+
     saveDisposition();
     const currentData = state.isFilterActive ? state.filteredData : state.data;
     if (state.currentIndex < currentData.length - 1) {
