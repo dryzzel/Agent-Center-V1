@@ -165,7 +165,7 @@ export async function loadUsersSummary() {
     <div style="background:var(--bg);border:1px solid var(--border);padding:12px;border-radius:8px;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div style="font-weight:700;color:var(--accent);">${escapeHtml(user.username)} ${user.role === 'admin' ? '(Admin)' : ''}</div>
-        <small>${escapeHtml(user.email)}</small>
+        <small>ID: ${escapeHtml(user.email)}</small>
       </div>
       <div style="margin-top:10px;">
         <div style="font-weight:600;margin-bottom:5px;">Assigned List:</div>
@@ -516,7 +516,7 @@ export async function loadFilterOptions() {
         }
 
         if (agentUsers && agentUsers.length) {
-            const agentOpts = agentUsers.map(user => `<option value="${user.id}">${user.username}</option>`).join('');
+            const agentOpts = agentUsers.map(user => `<option value="${user.id}">${user.username} - ${user.email || 'No ID'}</option>`).join('');
             agentFilterSelect.insertAdjacentHTML('beforeend', agentOpts);
             reassignAgentSelect.insertAdjacentHTML('beforeend', agentOpts);
         }
