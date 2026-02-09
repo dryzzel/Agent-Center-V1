@@ -208,11 +208,19 @@ function updateFilterOptions() {
         el.innerHTML = '<p style="text-align:center;color:var(--subtext);">No dispositions in data</p>';
         return;
     }
-    el.innerHTML = state.availableDispositions.map(d => `
+
+    // Add N/A at the beginning for "Not Called" leads
+    const uniqueDispos = [...new Set(state.availableDispositions)].filter(d => d && d !== 'N/A');
+    const allDispositions = ['N/A', ...uniqueDispos.sort()];
+
+    el.innerHTML = allDispositions.map(d => {
+        const label = d === 'N/A' ? 'N/A (Not Called)' : d;
+        return `
     <div class="filter-option">
       <input type="checkbox" id="filter-${d}" value="${d}">
-      <label for="filter-${d}">${d}</label>
-    </div>`).join('');
+      <label for="filter-${d}">${label}</label>
+    </div>`;
+    }).join('');
 }
 
 function toggleFilterPanel() {
@@ -277,7 +285,19 @@ function applyFilter() {
         const l = (row['listName'] || '').toString();
         const c = (row['customId'] || '').toString();
 
-        const matchDisposition = state.selectedDispositions.length === 0 || state.selectedDispositions.includes(d);
+        // Handle disposition matching: N/A means null/empty disposition
+        let matchDisposition = state.selectedDispositions.length === 0;
+        if (!matchDisposition) {
+            matchDisposition = state.selectedDispositions.some(selectedDisp => {
+                if (selectedDisp === 'N/A') {
+                    // N/A matches empty or null dispositions
+                    return !d || d === '' || d === 'null';
+                } else {
+                    return d === selectedDisp;
+                }
+            });
+        }
+
         const matchList = !selectedList || l === selectedList;
         const matchCustomId = !selectedCustomId || c === selectedCustomId;
 
