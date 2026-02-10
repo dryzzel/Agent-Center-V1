@@ -1,4 +1,5 @@
 import { CONFIG } from './config.js';
+import io from 'socket.io-client';
 
 // Setup Socket.io connection
 export const socket = io(CONFIG.API_BASE_URL);
