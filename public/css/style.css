@@ -1239,3 +1239,62 @@ input:focus {
   font-size: 0.9em;
   color: var(--text);
 }
+
+/* ==========================================
+   RINGCENTRAL ACTIVITY TABLE STYLES
+   ========================================== */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  background: transparent;
+}
+
+.data-table thead {
+  background: var(--card);
+  border-bottom: 2px solid var(--border);
+}
+
+.data-table th {
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--subtext);
+}
+
+.data-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.95em;
+}
+
+.data-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.data-table .time {
+  font-weight: 700;
+  color: var(--accent);
+  font-feature-settings: "tnum";
+}
+
+.data-table .muted {
+  text-align: center;
+  color: var(--subtext);
+  padding: 32px;
+  font-style: italic;
+}
+
+/* Responsive table wrapper */
+.data-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

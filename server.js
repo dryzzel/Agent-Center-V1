@@ -1340,6 +1340,162 @@ app.get("/admin/ringcentral/stats", authAdmin, async (req, res) => {
   }
 });
 
+// ==========================================
+// RINGCENTRAL AGENT ACTIVITY ENDPOINT
+// ==========================================
+// Fetches detailed agent activity from RingCentral call logs
+// Shows first call, last call, and total calls per agent for a selected date
+app.get("/api/ringcentral/activity", authAdmin, async (req, res) => {
+  try {
+    // 1. Authenticate with RingCentral
+    if (!await platform.loggedIn()) {
+      await platform.login({ jwt: process.env.RC_JWT });
+    }
+
+    // 2. Parse date parameters
+    const now = new Date();
+    let { date, dateFrom, dateTo } = req.query;
+    let startOfDay, endOfDay;
+
+    if (date) {
+      // Single date format: YYYY-MM-DD
+      const parts = date.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        startOfDay = new Date(y, m, d, 0, 0, 0);
+        endOfDay = new Date(y, m, d, 23, 59, 59, 999);
+      } else {
+        return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+      }
+    } else if (dateFrom || dateTo) {
+      // Date range
+      startOfDay = dateFrom ? new Date(dateFrom) : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      endOfDay = dateTo ? new Date(dateTo) : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    } else {
+      // Default to today
+      startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    }
+
+    const isoFrom = startOfDay.toISOString();
+    const isoTo = endOfDay.toISOString();
+
+    // 3. Fetch call logs with pagination
+    let records = [];
+    let endpoint = `/restapi/v1.0/account/~/call-log`;
+    let params = {
+      dateFrom: isoFrom,
+      dateTo: isoTo,
+      view: 'Simple',
+      perPage: 1000
+    };
+
+    let resp = await platform.get(endpoint, params);
+    let data = await resp.json();
+
+    if (data.records && data.records.length) {
+      records = records.concat(data.records);
+    }
+
+    // Handle pagination
+    while (data.navigation && data.navigation.nextPage && data.navigation.nextPage.uri) {
+      try {
+        resp = await platform.get(data.navigation.nextPage.uri);
+        data = await resp.json();
+        if (data.records && data.records.length) {
+          records = records.concat(data.records);
+        } else {
+          break;
+        }
+      } catch (err) {
+        console.warn('Error paginating call-log, stopping pagination:', err.message);
+        break;
+      }
+    }
+
+    if (!records || records.length === 0) {
+      return res.json({ status: 'No activity', agents: [] });
+    }
+
+    // 4. Aggregate by agent extension
+    const agentsMap = {};
+
+    records.forEach(call => {
+      let agentSide = null;
+      if (call.direction === 'Inbound') agentSide = call.to;
+      else if (call.direction === 'Outbound') agentSide = call.from;
+      else agentSide = call.from || call.to || null;
+
+      let extNum = null;
+      let extId = null;
+      let extName = null;
+
+      if (agentSide) {
+        if (agentSide.extension && agentSide.extension.extensionNumber) {
+          extNum = String(agentSide.extension.extensionNumber);
+          extId = agentSide.extension.id ? String(agentSide.extension.id) : null;
+          extName = agentSide.extension.name || agentSide.name || null;
+        }
+
+        if (!extNum && agentSide.extensionNumber) {
+          extNum = String(agentSide.extensionNumber);
+          extName = agentSide.name || null;
+        }
+
+        if (!extName && agentSide.name) extName = agentSide.name;
+      }
+
+      if (!extNum && call.extension) {
+        extNum = String(call.extension.extensionNumber || call.extension.id || '');
+        extId = call.extension.id ? String(call.extension.id) : extId;
+        extName = call.extension.name || extName;
+      }
+
+      if (!extNum) {
+        return; // Skip calls without extension
+      }
+
+      const key = extNum;
+
+      if (!agentsMap[key]) {
+        agentsMap[key] = {
+          extensionNumber: extNum,
+          extensionId: extId || null,
+          name: extName || 'Unnamed agent',
+          first: call.startTime,
+          last: call.startTime,
+          count: 1
+        };
+      } else {
+        agentsMap[key].count++;
+
+        if (new Date(call.startTime) < new Date(agentsMap[key].first)) {
+          agentsMap[key].first = call.startTime;
+        }
+
+        if (new Date(call.startTime) > new Date(agentsMap[key].last)) {
+          agentsMap[key].last = call.startTime;
+        }
+
+        if (!agentsMap[key].extensionId && extId) agentsMap[key].extensionId = extId;
+        if (agentsMap[key].name === 'Unnamed agent' && extName) agentsMap[key].name = extName;
+      }
+    });
+
+    // 5. Sort agents by first call time
+    const agents = Object.values(agentsMap).sort((a, b) => new Date(a.first) - new Date(b.first));
+
+    res.json({ status: 'Active', agents });
+
+  } catch (e) {
+    console.error("Error fetching RingCentral activity:", e);
+    res.status(500).json({ error: 'Error connecting to RingCentral', details: e.message });
+  }
+});
+
+
 // Iniciar servidor
 httpServer.listen(PORT, () => {
   console.log(`🚀 DOV backend en http://localhost:${PORT}`);

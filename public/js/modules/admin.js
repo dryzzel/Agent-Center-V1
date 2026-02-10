@@ -58,51 +58,11 @@ export function initializeAdminHub() {
         document.getElementById('uploadInfoModal').style.display = 'none';
     });
 
+
     // Load Initial Data
     loadUsersSummary();
     loadAnalyticsDashboard();
     loadFilterOptions();
-
-    // Manual load only to save API calls
-    document.getElementById('rcRefreshBtn').addEventListener('click', () => {
-        const range = document.getElementById('rcTimeRange').value;
-        loadRingCentralMetrics(range);
-    });
-
-    // Recalculate metrics when hours worked changes
-    document.getElementById('rcHoursWorked').addEventListener('change', () => {
-        const hours = document.getElementById('rcHoursWorked').value;
-        localStorage.setItem('rcHoursWorked', hours);
-        const savedData = localStorage.getItem('rcMetricsData');
-        if (savedData) {
-            try {
-                renderRingCentralMetrics(JSON.parse(savedData));
-            } catch (e) {
-                console.error('Error parsing saved RC data', e);
-            }
-        }
-    });
-
-    // Restore saved RC metrics from localStorage
-    const savedData = localStorage.getItem('rcMetricsData');
-    const savedTimeRange = localStorage.getItem('rcMetricsTimeRange');
-    const savedHoursWorked = localStorage.getItem('rcHoursWorked');
-
-    if (savedHoursWorked) {
-        document.getElementById('rcHoursWorked').value = savedHoursWorked;
-    }
-
-    if (savedData) {
-        try {
-            const data = JSON.parse(savedData);
-            renderRingCentralMetrics(data);
-            if (savedTimeRange) {
-                document.getElementById('rcTimeRange').value = savedTimeRange;
-            }
-        } catch (e) {
-            console.error('Error loading saved RC metrics:', e);
-        }
-    }
 
     initializeLeadManagement();
 
@@ -129,9 +89,6 @@ export function showAdminView(viewId) {
         loadAllLeads();
     } else if (viewId === 'users') {
         loadUsersSummary();
-    } else if (viewId === 'ringcentral') {
-        const range = document.getElementById('rcTimeRange').value;
-        loadRingCentralMetrics(range);
     }
 }
 
@@ -995,35 +952,91 @@ async function loadAgentPerformanceChart() {
     } catch (err) { }
 }
 
-async function loadRingCentralMetrics(timeRange = 'today') {
+// ==========================================
+// RINGCENTRAL AGENT ACTIVITY FUNCTIONS
+// ==========================================
+async function loadRingCentralActivity() {
+    const dateInput = document.getElementById('rcDateInput');
+    const tableBody = document.getElementById('rcAgentActivityTable');
+
+    if (!dateInput || !tableBody) return;
+
+    // Show loading state
+    tableBody.innerHTML = '<tr><td colspan="4" class="muted">Loading...</td></tr>';
+
     try {
-        const resp = await fetchWithAuth(`${CONFIG.API_BASE_URL}/admin/ringcentral/stats?timeRange=${timeRange}`);
-        if (!resp.ok) return;
-        const data = await resp.json();
-        localStorage.setItem('rcMetricsData', JSON.stringify(data));
-        localStorage.setItem('rcMetricsTimeRange', timeRange);
-        renderRingCentralMetrics(data);
-    } catch (err) { }
+        const date = dateInput.value;
+        const url = `${CONFIG.API_BASE_URL}/api/ringcentral/activity${date ? `?date=${date}` : ''}`;
+
+        const response = await fetchWithAuth(url);
+
+        if (!response.ok) {
+            const error = await response.json();
+            tableBody.innerHTML = `<tr><td colspan="4" style="color: var(--danger); text-align: center;">${error.error || 'Error loading data'}</td></tr>`;
+            return;
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+            tableBody.innerHTML = `<tr><td colspan="4" style="color: var(--danger); text-align: center;">${data.error}</td></tr>`;
+            return;
+        }
+
+        if (!data.agents || data.agents.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="4" class="muted">No activity for this date</td></tr>';
+            return;
+        }
+
+        // Populate table
+        tableBody.innerHTML = data.agents.map(agent => `
+            <tr>
+                <td>${escapeHtml(agent.name || 'Unnamed')}</td>
+                <td class="time">${formatTime(agent.first)}</td>
+                <td class="time">${formatTime(agent.last)}</td>
+                <td style="text-align: center; font-weight: 600;">${agent.count}</td>
+            </tr>
+        `).join('');
+
+        if (window.feather) feather.replace();
+
+    } catch (err) {
+        console.error('Error loading RingCentral activity:', err);
+        tableBody.innerHTML = '<tr><td colspan="4" style="color: var(--danger); text-align: center;">Connection error</td></tr>';
+    }
 }
 
-function renderRingCentralMetrics(data) {
-    const hoursWorked = parseInt(document.getElementById('rcHoursWorked').value) || 8;
-    const secondsWorked = hoursWorked * 3600;
-    document.getElementById('rcGlobalCallsPerHour').textContent = data.global.callsPerHour || '0';
-    document.getElementById('rcGlobalTimeBetweenCalls').textContent = (data.global.avgTimeBetweenCalls || '0') + 's';
-    const container = document.getElementById('rcAgentMetrics');
-    if (!container) return;
-    if (!data.agents || data.agents.length === 0) { container.innerHTML = '<p style="grid-column: 1/-1;">No RingCentral data.</p>'; return; }
-    container.innerHTML = data.agents.map(agent => {
-        const calls = agent.calls || 0;
-        const duration = agent.duration || 0;
-        const durationMin = (duration / 60).toFixed(1);
-        const callsPerHour = (calls / hoursWorked).toFixed(1);
-        let timeBetweenCalls = 0;
-        if (calls > 0) { const availableTime = Math.max(0, secondsWorked - duration); timeBetweenCalls = (availableTime / calls).toFixed(0); }
-        return `<div class="user-card"><div class="user-info"><div class="user-avatar">${agent.name.substring(0, 2).toUpperCase()}</div><div><div class="user-name">${escapeHtml(agent.name)}</div><div class="user-role">Agent</div></div></div><div class="stats-grid" style="grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;"><div class="stat-card" style="padding: 8px;"><h4 class="stat-title">Calls/Hr</h4><p class="stat-value">${callsPerHour}</p><small>Total: ${calls}</small></div><div class="stat-card" style="padding: 8px;"><h4 class="stat-title">Time B/W Calls</h4><p class="stat-value">${timeBetweenCalls}s</p><small>Dur: ${durationMin}m</small></div></div></div>`;
-    }).join('');
+function formatTime(isoString) {
+    if (!isoString) return '--:--';
+    try {
+        return new Date(isoString).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch {
+        return '--:--';
+    }
 }
+
+function setRCDateToToday() {
+    const input = document.getElementById('rcDateInput');
+    if (!input) return;
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    input.value = `${yyyy}-${mm}-${dd}`;
+}
+
+// Initialize RingCentral activity on view load
+document.addEventListener('DOMContentLoaded', () => {
+    const rcUpdateBtn = document.getElementById('rcUpdateBtn');
+    if (rcUpdateBtn) {
+        rcUpdateBtn.addEventListener('click', loadRingCentralActivity);
+        setRCDateToToday();
+    }
+});
+
 
 export function openAgentProfile(userId, username) {
     document.getElementById('agentProfileId').value = userId;

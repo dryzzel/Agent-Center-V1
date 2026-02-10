@@ -301,40 +301,42 @@
                     </div>
                 </div>
 
+                <!-- Agent Activity Section -->
                 <div class="dashboard-card">
-                    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 24px;">
-                        <select id="rcTimeRange" class="form-input"
-                            style="width: auto; padding: 6px 12px; margin-right: 8px;">
-                            <option value="today">Today</option>
-                            <option value="yesterday">Yesterday</option>
-                            <option value="last7">Last 7 Days</option>
-                            <option value="last30">Last 30 Days</option>
-                        </select>
-                        <select id="rcHoursWorked" class="form-input"
-                            style="width: auto; padding: 6px 12px; margin-right: 8px;" title="Hours Worked">
-                            <option value="1">1 Hour</option>
-                            <option value="4">4 Hours</option>
-                            <option value="8" selected>8 Hours</option>
-                        </select>
-                        <button id="rcRefreshBtn" class="btn-primary" style="padding: 6px 12px;">
-                            <i data-feather="refresh-cw"></i> Load Data
+                    <h3 class="section-title"><i data-feather="activity"></i> Agent Activity Details</h3>
+
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i data-feather="calendar" style="width: 18px; height: 18px; color: var(--accent);"></i>
+                            <label for="rcDateInput"
+                                style="color: var(--text); font-weight: 600; font-size: 0.9em;">Select Date:</label>
+                        </div>
+                        <input type="date" id="rcDateInput" class="form-input"
+                            style="width: auto; max-width: 200px; flex: 0 0 auto;">
+                        <button id="rcUpdateBtn" class="small-btn"
+                            style="background: var(--accent); color: white; border: none; padding: 10px 20px; display: flex; align-items: center; gap: 8px; font-weight: 600;">
+                            <i data-feather="refresh-cw" style="width: 16px; height: 16px;"></i>
+                            <span>Update</span>
                         </button>
                     </div>
 
-                    <div class="stats-grid"
-                        style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 32px;">
-                        <div class="stat-card">
-                            <h4 class="stat-title">Global Calls/Hour</h4>
-                            <p class="stat-value" id="rcGlobalCallsPerHour">0</p>
-                        </div>
-                        <div class="stat-card">
-                            <h4 class="stat-title">Avg Time Between Calls</h4>
-                            <p class="stat-value" id="rcGlobalTimeBetweenCalls">0s</p>
-                        </div>
+                    <div style="overflow-x: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="border-top-left-radius: 8px;">Agent</th>
+                                    <th>First Call</th>
+                                    <th>Last Call</th>
+                                    <th style="border-top-right-radius: 8px; text-align: center;">Total Calls</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rcAgentActivityTable">
+                                <tr>
+                                    <td colspan="4" class="muted">Select a date and click Update</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-
-                    <h3 class="section-title"><i data-feather="users"></i> Agent Metrics</h3>
-                    <div id="rcAgentMetrics" class="users-grid"></div>
                 </div>
             </div>
 
