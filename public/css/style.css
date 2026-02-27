@@ -1537,6 +1537,36 @@ input:focus {
   height: 16px;
 }
 
+/* Undo Last Disposition Button */
+.dialer-undo-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.85em;
+  transition: all 0.2s ease;
+  margin-top: 2px;
+}
+
+.dialer-undo-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.6);
+  transform: translateY(-1px);
+}
+
+.dialer-undo-btn i {
+  width: 16px;
+  height: 16px;
+}
+
 /* Toggle button in controls bar */
 .dialer-toggle-btn {
   background: linear-gradient(135deg, var(--accent), #6366f1) !important;

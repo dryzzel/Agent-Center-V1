@@ -871,12 +871,15 @@ function toggleCallbacksPanel() {
 // FLOATING DIALER (Off-List Calls)
 // ==========================================
 
+let lastManualDisposition = null;
+
 function initializeDialer() {
     const fab = document.getElementById('dialerFab');
     const pinBtn = document.getElementById('dialerPinBtn');
     const minBtn = document.getElementById('dialerMinBtn');
     const callBtn = document.getElementById('dialerCallBtn');
     const saveBtn = document.getElementById('dialerSaveBtn');
+    const undoBtn = document.getElementById('dialerUndoBtn');
     const toggleBtn = document.getElementById('toggleDialerBtn');
     const phoneInput = document.getElementById('dialerPhone');
 
@@ -886,6 +889,7 @@ function initializeDialer() {
     if (minBtn) minBtn.addEventListener('click', minimizeDialer);
     if (callBtn) callBtn.addEventListener('click', dialManualCall);
     if (saveBtn) saveBtn.addEventListener('click', saveManualCall);
+    if (undoBtn) undoBtn.addEventListener('click', undoManualCall);
 
     // Auto-save when disposition is selected
     const dispoSelect = document.getElementById('dialerDisposition');
@@ -943,6 +947,18 @@ function dialManualCall() {
     window.location.href = `tel:${encodeURIComponent(digits)}`;
 }
 
+function updateDialerUndoButton() {
+    const undoBtn = document.getElementById('dialerUndoBtn');
+    if (!undoBtn) return;
+    if (lastManualDisposition) {
+        undoBtn.style.display = 'flex';
+        undoBtn.innerHTML = '<i data-feather="rotate-ccw"></i> Undo Last (' + lastManualDisposition + ')';
+        if (typeof feather !== 'undefined') feather.replace();
+    } else {
+        undoBtn.style.display = 'none';
+    }
+}
+
 async function saveManualCall() {
     const phone = document.getElementById('dialerPhone').value.trim();
     const disposition = document.getElementById('dialerDisposition').value;
@@ -959,6 +975,8 @@ async function saveManualCall() {
         const data = await res.json();
         if (data.success) {
             showToast('Manual call saved!', 'success');
+            lastManualDisposition = disposition;
+            updateDialerUndoButton();
             // Clear form
             document.getElementById('dialerPhone').value = '';
             document.getElementById('dialerDisposition').value = '';
@@ -968,6 +986,29 @@ async function saveManualCall() {
     } catch (err) {
         console.error('Error saving manual call:', err);
         showToast('Error saving manual call', 'error');
+    }
+}
+
+async function undoManualCall() {
+    if (!lastManualDisposition) return;
+
+    try {
+        const res = await fetchWithAuth(`${CONFIG.API_BASE_URL}/agent/manual-call/last`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ disposition: lastManualDisposition })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Last disposition (' + lastManualDisposition + ') removed!', 'success');
+            lastManualDisposition = null;
+            updateDialerUndoButton();
+        } else {
+            showToast(data.error || 'Error undoing disposition', 'error');
+        }
+    } catch (err) {
+        console.error('Error undoing manual call:', err);
+        showToast('Error undoing disposition', 'error');
     }
 }
 

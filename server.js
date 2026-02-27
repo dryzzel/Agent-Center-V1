@@ -1172,6 +1172,42 @@ app.post("/agent/manual-call", authAgent, async (req, res) => {
   }
 });
 
+// Undo last manual call disposition (decrement counter)
+app.delete("/agent/manual-call/last", authAgent, async (req, res) => {
+  const { disposition } = req.body;
+  const userId = new ObjectId(req.user.id);
+
+  if (!disposition) {
+    return res.status(400).json({ error: "Disposition is required" });
+  }
+
+  try {
+    // Check current count first
+    const user = await db.collection("users").findOne(
+      { _id: userId },
+      { projection: { manualCallStats: 1 } }
+    );
+
+    const currentCount = user?.manualCallStats?.[disposition] || 0;
+    if (currentCount <= 0) {
+      return res.status(400).json({ error: "No dispositions to undo" });
+    }
+
+    // Decrement the counter
+    await db.collection("users").updateOne(
+      { _id: userId },
+      {
+        $inc: { [`manualCallStats.${disposition}`]: -1 },
+        $set: { lastActivity: new Date().toISOString() }
+      }
+    );
+    res.json({ success: true, message: "Last disposition removed" });
+  } catch (err) {
+    console.error("Error undoing manual call:", err);
+    res.status(500).json({ error: "Error undoing manual call" });
+  }
+});
+
 // Admin: Get manual call stats for all agents (read from user documents)
 app.get("/admin/manual-calls/stats", authAdmin, async (req, res) => {
   try {
