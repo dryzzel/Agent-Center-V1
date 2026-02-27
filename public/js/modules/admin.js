@@ -89,6 +89,8 @@ export function showAdminView(viewId) {
         loadAllLeads();
     } else if (viewId === 'users') {
         loadUsersSummary();
+    } else if (viewId === 'manual-calls') {
+        loadManualCallStats();
     }
 }
 
@@ -1089,3 +1091,68 @@ window.openAgentProfile = openAgentProfile;
 window.openEditModal = openEditModal;
 window.handleDeleteUser = handleDeleteUser;
 window.loadAllLeads = loadAllLeads; // For filter button
+
+// ==========================================
+// MANUAL CALLS - Admin View
+// ==========================================
+
+async function loadManualCallStats() {
+    try {
+        const res = await fetchWithAuth(`${CONFIG.API_BASE_URL}/admin/manual-calls/stats`);
+        const stats = await res.json();
+
+        // Total
+        const totalEl = document.getElementById('mcTotalToday');
+        if (totalEl) totalEl.textContent = stats.totalToday || 0;
+
+        // Global dispositions breakdown (sidebar)
+        const dispoEl = document.getElementById('mcByDisposition');
+        if (dispoEl) {
+            if (stats.dispositions && Object.keys(stats.dispositions).length) {
+                dispoEl.innerHTML = Object.entries(stats.dispositions)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([dispo, count]) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="font-weight:500;">${escapeHtml(dispo)}</span><strong>${count}</strong></div>`)
+                    .join('');
+            } else {
+                dispoEl.innerHTML = '<p style="color:var(--subtext);text-align:center;">No data</p>';
+            }
+        }
+
+        // Per-agent cards
+        const cardsEl = document.getElementById('mcAgentCards');
+        if (cardsEl) {
+            if (stats.perAgent && stats.perAgent.length) {
+                cardsEl.innerHTML = stats.perAgent
+                    .sort((a, b) => {
+                        const totalA = Object.values(a.stats).reduce((s, v) => s + v, 0);
+                        const totalB = Object.values(b.stats).reduce((s, v) => s + v, 0);
+                        return totalB - totalA;
+                    })
+                    .map(agent => {
+                        const total = Object.values(agent.stats).reduce((s, v) => s + v, 0);
+                        const dispoRows = Object.entries(agent.stats)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([d, c]) => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:0.9em;"><span>${escapeHtml(d)}</span><strong>${c}</strong></div>`)
+                            .join('');
+
+                        return `
+    <div style="background:var(--bg);border:1px solid var(--border);padding:12px;border-radius:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-weight:700;color:var(--accent);">${escapeHtml(agent.username)}</div>
+        <div style="background:var(--accent-light);color:var(--accent);padding:3px 10px;border-radius:20px;font-size:0.8em;font-weight:600;">${total} calls</div>
+      </div>
+      <div style="margin-top:10px;">
+        <div style="font-weight:600;margin-bottom:5px;font-size:0.85em;color:var(--subtext);">DISPOSITIONS</div>
+        ${dispoRows}
+      </div>
+    </div>`;
+                    }).join('');
+                if (window.feather) feather.replace();
+            } else {
+                cardsEl.innerHTML = '<p style="color:var(--subtext);text-align:center;">No manual calls recorded yet</p>';
+            }
+        }
+    } catch (err) {
+        console.error('Error loading manual call stats:', err);
+    }
+}

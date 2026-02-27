@@ -23,6 +23,9 @@
                 <button class="nav-item" onclick="showAdminView('ringcentral')" id="nav-ringcentral">
                     <i data-feather="phone-forwarded"></i> RingCentral
                 </button>
+                <button class="nav-item" onclick="showAdminView('manual-calls')" id="nav-manual-calls">
+                    <i data-feather="phone-outgoing"></i> Manual Calls
+                </button>
             </nav>
             <div class="button-group" style="margin-top: auto;">
                 <button id="adminRefreshBtn" class="small-btn"><i data-feather="refresh-cw"></i> Refresh Data</button>
@@ -336,6 +339,37 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: MANUAL CALLS -->
+            <div id="admin-view-manual-calls" class="admin-view" style="display: none;">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title">Manual Calls</h1>
+                    <p class="dashboard-date">Off-list calls made by agents</p>
+                </div>
+
+                <div class="dashboard-grid" style="grid-template-columns: 1fr 2fr;">
+                    <!-- Summary Card -->
+                    <div class="dashboard-card" style="height: fit-content;">
+                        <h3 class="section-title"><i data-feather="bar-chart-2"></i> Summary</h3>
+                        <div style="text-align:center;margin:16px 0;">
+                            <div style="font-size:2.5em;font-weight:700;color:var(--accent);" id="mcTotalToday">0</div>
+                            <div style="color:var(--subtext);font-size:0.9em;">Total Manual Calls</div>
+                        </div>
+                        <div style="border-top:1px solid var(--border);padding-top:12px;">
+                            <h4 style="font-weight:600;margin-bottom:8px;color:var(--text);font-size:0.9em;">
+                                Dispositions Breakdown</h4>
+                            <div id="mcByDisposition"></div>
+                        </div>
+                    </div>
+
+                    <!-- Per-Agent Cards -->
+                    <div class="dashboard-card">
+                        <h3 class="section-title"><i data-feather="users"></i> Agent Breakdown</h3>
+                        <div id="mcAgentCards" class="users-grid"
+                            style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));"></div>
                     </div>
                 </div>
             </div>

@@ -1,0 +1,65 @@
+<!-- Floating Dialer Widget -->
+<div id="floatingDialer" class="floating-dialer minimized">
+    <!-- Minimized FAB Button -->
+    <button id="dialerFab" class="dialer-fab" title="Quick Dialer">
+        <i data-feather="phone-outgoing"></i>
+    </button>
+
+    <!-- Expanded Panel -->
+    <div class="dialer-panel">
+        <div class="dialer-header">
+            <h4 class="dialer-title"><i data-feather="phone-outgoing"></i> Quick Dialer</h4>
+            <div class="dialer-controls">
+                <button id="dialerPinBtn" class="dialer-icon-btn" title="Pop out window">
+                    <i data-feather="map-pin"></i>
+                </button>
+                <button id="dialerMinBtn" class="dialer-icon-btn" title="Minimize">
+                    <i data-feather="minus"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="dialer-body">
+            <div class="dialer-field">
+                <label class="dialer-label">Phone Number</label>
+                <div class="dialer-input-row">
+                    <input type="tel" id="dialerPhone" class="form-input" placeholder="Paste or type number…">
+                    <button id="dialerCallBtn" class="dialer-call-btn" title="Call Now">
+                        <i data-feather="phone-call"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="dialer-field">
+                <div class="checkbox-container" style="margin: 0;">
+                    <input type="checkbox" id="dialerAutoCall" />
+                    <label for="dialerAutoCall" class="checkbox-label">Auto-call on paste</label>
+                </div>
+            </div>
+
+            <div class="dialer-field">
+                <label class="dialer-label">Disposition</label>
+                <select id="dialerDisposition" class="form-input">
+                    <option value="">Select…</option>
+                    <option value="NA">NA</option>
+                    <option value="DNC">DNC</option>
+                    <option value="ADP">ADP</option>
+                    <option value="WN">WN</option>
+                    <option value="VM">VM</option>
+                    <option value="DC">DC</option>
+                    <option value="ND/SD">ND/SD</option>
+                    <option value="FUTURE">FUTURE</option>
+                    <option value="KICKED">KICKED</option>
+                    <option value="NI">NI</option>
+                    <option value="HU">HU</option>
+                    <option value="Callback">Callback</option>
+                </select>
+            </div>
+
+
+            <button id="dialerSaveBtn" class="dialer-save-btn">
+                <i data-feather="save"></i> Save Call
+            </button>
+        </div>
+    </div>
+</div>

@@ -76,6 +76,9 @@ export function initializeApp() {
     if (closeHistoryModalBtn) closeHistoryModalBtn.onclick = () => {
         document.getElementById('leadHistoryModal').style.display = 'none';
     };
+
+    // Floating Dialer Listeners
+    initializeDialer();
 }
 
 async function loadAgentData() {
@@ -861,6 +864,110 @@ function toggleCallbacksPanel() {
         callbacksSection.style.display = 'block';
         filterDispositionSection.style.display = 'none';
         filterContactsSection.style.display = 'none';
+    }
+}
+
+// ==========================================
+// FLOATING DIALER (Off-List Calls)
+// ==========================================
+
+function initializeDialer() {
+    const fab = document.getElementById('dialerFab');
+    const pinBtn = document.getElementById('dialerPinBtn');
+    const minBtn = document.getElementById('dialerMinBtn');
+    const callBtn = document.getElementById('dialerCallBtn');
+    const saveBtn = document.getElementById('dialerSaveBtn');
+    const toggleBtn = document.getElementById('toggleDialerBtn');
+    const phoneInput = document.getElementById('dialerPhone');
+
+    if (fab) fab.addEventListener('click', toggleDialer);
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleDialer);
+    if (pinBtn) pinBtn.addEventListener('click', pinDialer);
+    if (minBtn) minBtn.addEventListener('click', minimizeDialer);
+    if (callBtn) callBtn.addEventListener('click', dialManualCall);
+    if (saveBtn) saveBtn.addEventListener('click', saveManualCall);
+
+    // Auto-save when disposition is selected
+    const dispoSelect = document.getElementById('dialerDisposition');
+    if (dispoSelect) dispoSelect.addEventListener('change', () => {
+        if (dispoSelect.value && document.getElementById('dialerPhone').value.trim()) {
+            saveManualCall();
+        }
+    });
+
+    // Auto-call on paste
+    if (phoneInput) {
+        phoneInput.addEventListener('paste', (e) => {
+            setTimeout(() => {
+                const autoCall = document.getElementById('dialerAutoCall');
+                if (autoCall && autoCall.checked && phoneInput.value.trim()) {
+                    dialManualCall();
+                }
+            }, 100); // Small delay to let paste complete
+        });
+    }
+}
+
+function toggleDialer() {
+    const dialer = document.getElementById('floatingDialer');
+    if (!dialer) return;
+    dialer.classList.toggle('minimized');
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function minimizeDialer() {
+    const dialer = document.getElementById('floatingDialer');
+    if (!dialer) return;
+    dialer.classList.add('minimized');
+}
+
+function pinDialer() {
+    // Open as a separate popup window
+    const w = 380, h = 520;
+    const left = window.screen.width - w - 40;
+    const top = 40;
+    window.open(
+        '/dialer-popup',
+        'QuickDialer',
+        `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
+    );
+}
+
+function dialManualCall() {
+    const phoneInput = document.getElementById('dialerPhone');
+    if (!phoneInput || !phoneInput.value.trim()) {
+        showToast('Enter a phone number first', 'error');
+        return;
+    }
+    const digits = phoneInput.value.trim().replace(/[^+0-9]/g, '');
+    window.location.href = `tel:${encodeURIComponent(digits)}`;
+}
+
+async function saveManualCall() {
+    const phone = document.getElementById('dialerPhone').value.trim();
+    const disposition = document.getElementById('dialerDisposition').value;
+
+    if (!phone) { showToast('Enter a phone number', 'error'); return; }
+    if (!disposition) { showToast('Select a disposition', 'error'); return; }
+
+    try {
+        const res = await fetchWithAuth(`${CONFIG.API_BASE_URL}/agent/manual-call`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, disposition })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Manual call saved!', 'success');
+            // Clear form
+            document.getElementById('dialerPhone').value = '';
+            document.getElementById('dialerDisposition').value = '';
+        } else {
+            showToast(data.error || 'Error saving call', 'error');
+        }
+    } catch (err) {
+        console.error('Error saving manual call:', err);
+        showToast('Error saving manual call', 'error');
     }
 }
 

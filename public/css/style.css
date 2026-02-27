@@ -1298,3 +1298,255 @@ input:focus {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ==========================================
+   FLOATING DIALER WIDGET
+   ========================================== */
+.floating-dialer {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  z-index: 1500;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-dialer.pinned {
+  bottom: auto;
+  top: 12px;
+  right: 24px;
+}
+
+/* FAB Button (visible when minimized) */
+.dialer-fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--accent), #6366f1);
+  color: white;
+  box-shadow: 0 4px 24px rgba(59, 130, 246, 0.4), 0 0 0 0 rgba(59, 130, 246, 0.3);
+  transition: all 0.3s ease;
+  animation: dialerPulse 2.5s ease-in-out infinite;
+}
+
+.dialer-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 32px rgba(59, 130, 246, 0.5);
+}
+
+.dialer-fab i {
+  width: 24px;
+  height: 24px;
+}
+
+@keyframes dialerPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 4px 24px rgba(59, 130, 246, 0.4), 0 0 0 0 rgba(59, 130, 246, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 4px 24px rgba(59, 130, 246, 0.4), 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
+/* When minimized: show FAB, hide panel */
+.floating-dialer.minimized .dialer-panel {
+  opacity: 0;
+  transform: scale(0.8) translateY(20px);
+  pointer-events: none;
+  position: absolute;
+  bottom: 70px;
+  right: 0;
+}
+
+.floating-dialer.minimized .dialer-fab {
+  display: flex;
+}
+
+/* When expanded: hide FAB, show panel */
+.floating-dialer:not(.minimized) .dialer-fab {
+  display: none;
+}
+
+.floating-dialer:not(.minimized) .dialer-panel {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+/* Dialer Panel */
+.dialer-panel {
+  width: 340px;
+  background: rgba(24, 24, 32, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dialer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dialer-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95em;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.dialer-title i {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.dialer-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.dialer-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--subtext);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.dialer-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.dialer-icon-btn.active {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.dialer-icon-btn i {
+  width: 16px;
+  height: 16px;
+}
+
+.dialer-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dialer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dialer-label {
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dialer-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.dialer-input-row .form-input {
+  flex: 1;
+}
+
+.dialer-call-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dialer-call-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.4);
+}
+
+.dialer-call-btn i {
+  width: 20px;
+  height: 20px;
+}
+
+.dialer-save-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.9em;
+  background: linear-gradient(135deg, var(--accent), #6366f1);
+  color: white;
+  transition: all 0.2s ease;
+  margin-top: 4px;
+}
+
+.dialer-save-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+}
+
+.dialer-save-btn i {
+  width: 16px;
+  height: 16px;
+}
+
+/* Toggle button in controls bar */
+.dialer-toggle-btn {
+  background: linear-gradient(135deg, var(--accent), #6366f1) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
+  transition: all 0.2s ease !important;
+}
+
+.dialer-toggle-btn:hover {
+  transform: scale(1.08) !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5) !important;
+}

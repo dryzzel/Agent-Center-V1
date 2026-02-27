@@ -1,0 +1,200 @@
+<div id="dialerPopupScreen" style="display: block;">
+    <div class="dialer-popup-container">
+        <div class="dialer-popup-header">
+            <h4><i data-feather="phone-outgoing"></i> Quick Dialer</h4>
+            <span class="dialer-popup-badge">Popup</span>
+        </div>
+
+        <div class="dialer-popup-body">
+            <div class="dialer-field">
+                <label class="dialer-label">Phone Number</label>
+                <div class="dialer-input-row">
+                    <input type="tel" id="popupDialerPhone" class="form-input" placeholder="Paste or type number…"
+                        autofocus>
+                    <button id="popupCallBtn" class="dialer-call-btn" title="Call Now">
+                        <i data-feather="phone-call"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="dialer-field">
+                <div class="checkbox-container" style="margin: 0;">
+                    <input type="checkbox" id="popupAutoCall" />
+                    <label for="popupAutoCall" class="checkbox-label">Auto-call on paste</label>
+                </div>
+            </div>
+
+            <div class="dialer-field">
+                <label class="dialer-label">Disposition</label>
+                <select id="popupDisposition" class="form-input">
+                    <option value="">Select…</option>
+                    <option value="NA">NA</option>
+                    <option value="DNC">DNC</option>
+                    <option value="ADP">ADP</option>
+                    <option value="WN">WN</option>
+                    <option value="VM">VM</option>
+                    <option value="DC">DC</option>
+                    <option value="ND/SD">ND/SD</option>
+                    <option value="FUTURE">FUTURE</option>
+                    <option value="KICKED">KICKED</option>
+                    <option value="NI">NI</option>
+                    <option value="HU">HU</option>
+                    <option value="Callback">Callback</option>
+                </select>
+            </div>
+
+
+            <button id="popupSaveBtn" class="dialer-save-btn">
+                <i data-feather="save"></i> Save Call
+            </button>
+
+            <div id="popupToast" class="popup-toast" style="display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+    }
+
+    .dialer-popup-container {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg);
+    }
+
+    .dialer-popup-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 18px;
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .dialer-popup-header h4 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95em;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0;
+    }
+
+    .dialer-popup-header h4 i {
+        width: 18px;
+        height: 18px;
+        color: var(--accent);
+    }
+
+    .dialer-popup-badge {
+        background: var(--accent-light);
+        color: var(--accent);
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.75em;
+        font-weight: 600;
+    }
+
+    .dialer-popup-body {
+        padding: 16px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .popup-toast {
+        padding: 10px 14px;
+        border-radius: 8px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.85em;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .popup-toast.success {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .popup-toast.error {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+</style>
+
+<script>
+    (function () {
+        const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost:3000' : '';
+        const token = localStorage.getItem('userToken');
+
+        function showPopupToast(msg, type) {
+            const el = document.getElementById('popupToast');
+            el.textContent = msg;
+            el.className = 'popup-toast ' + type;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 3000);
+        }
+
+        function doCall() {
+            const phone = document.getElementById('popupDialerPhone').value.trim();
+            if (!phone) { showPopupToast('Enter a number', 'error'); return; }
+            const digits = phone.replace(/[^+0-9]/g, '');
+            window.location.href = 'tel:' + encodeURIComponent(digits);
+        }
+
+        async function doSave() {
+            const phone = document.getElementById('popupDialerPhone').value.trim();
+            const disposition = document.getElementById('popupDisposition').value;
+            if (!phone) { showPopupToast('Enter a phone number', 'error'); return; }
+            if (!disposition) { showPopupToast('Select a disposition', 'error'); return; }
+
+            try {
+                const res = await fetch(API_BASE + '/agent/manual-call', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ phone, disposition })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showPopupToast('Call saved!', 'success');
+                    document.getElementById('popupDialerPhone').value = '';
+                    document.getElementById('popupDisposition').value = '';
+                    document.getElementById('popupDialerPhone').focus();
+                } else {
+                    showPopupToast(data.error || 'Error', 'error');
+                }
+            } catch (e) {
+                showPopupToast('Error saving', 'error');
+            }
+        }
+
+        document.getElementById('popupCallBtn').addEventListener('click', doCall);
+        document.getElementById('popupSaveBtn').addEventListener('click', doSave);
+
+        // Auto-save when disposition is selected
+        document.getElementById('popupDisposition').addEventListener('change', function () {
+            if (this.value && document.getElementById('popupDialerPhone').value.trim()) {
+                doSave();
+            }
+        });
+
+        // Auto-call on paste
+        document.getElementById('popupDialerPhone').addEventListener('paste', () => {
+            setTimeout(() => {
+                if (document.getElementById('popupAutoCall').checked) doCall();
+            }, 100);
+        });
+
+        feather.replace();
+    })();
+</script>

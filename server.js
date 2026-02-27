@@ -63,6 +63,17 @@ app.get("/", (req, res) => {
   });
 });
 
+// Dialer Popup - standalone small window for agents
+app.get("/dialer-popup", (req, res) => {
+  res.render("dialer_popup", (err, html) => {
+    if (err) {
+      console.error("Dialer popup render error:", err);
+      return res.status(500).send("Error");
+    }
+    res.send(html);
+  });
+});
+
 const httpServer = createServer(app);
 // Configuración de Socket.io para comunicación en tiempo real (ej. actualizar dashboard de admin cuando un agente hace una venta).
 const io = new Server(httpServer, {
@@ -1131,6 +1142,99 @@ app.get("/agent/leads/:id/history", authAgent, async (req, res) => {
     res.status(500).json({ error: "Error fetching history" });
   }
 });
+
+// ==========================================
+// MANUAL CALLS (Off-List Dialer)
+// ==========================================
+// Agents log off-list call dispositions as counters on their user document.
+
+app.post("/agent/manual-call", authAgent, async (req, res) => {
+  const { phone, disposition, notes } = req.body;
+  const userId = new ObjectId(req.user.id);
+
+  if (!phone || !disposition) {
+    return res.status(400).json({ error: "Phone and disposition are required" });
+  }
+
+  try {
+    // Increment the disposition counter on the user document
+    await db.collection("users").updateOne(
+      { _id: userId },
+      {
+        $inc: { [`manualCallStats.${disposition}`]: 1 },
+        $set: { lastActivity: new Date().toISOString() }
+      }
+    );
+    res.json({ success: true, message: "Manual call saved" });
+  } catch (err) {
+    console.error("Error saving manual call:", err);
+    res.status(500).json({ error: "Error saving manual call" });
+  }
+});
+
+// Admin: Get manual call stats for all agents (read from user documents)
+app.get("/admin/manual-calls/stats", authAdmin, async (req, res) => {
+  try {
+    const users = await db.collection("users").find(
+      { role: "agent", manualCallStats: { $exists: true, $ne: {} } },
+      { projection: { username: 1, manualCallStats: 1 } }
+    ).toArray();
+
+    const agents = {};
+    const dispositions = {};
+    let totalCalls = 0;
+
+    users.forEach(u => {
+      const userTotal = Object.values(u.manualCallStats || {}).reduce((a, b) => a + b, 0);
+      if (userTotal > 0) agents[u.username] = userTotal;
+      totalCalls += userTotal;
+
+      Object.entries(u.manualCallStats || {}).forEach(([dispo, count]) => {
+        dispositions[dispo] = (dispositions[dispo] || 0) + count;
+      });
+    });
+
+    res.json({ totalToday: totalCalls, dispositions, agents, perAgent: users.map(u => ({ username: u.username, stats: u.manualCallStats || {} })) });
+  } catch (err) {
+    console.error("Error getting manual call stats:", err);
+    res.status(500).json({ error: "Error getting manual call stats" });
+  }
+});
+
+// Daily reset of manualCallStats at midnight UTC-4
+function scheduleManualCallsReset() {
+  const UTC4_OFFSET = -4 * 60 * 60 * 1000; // UTC-4 in ms
+  const now = new Date();
+  const nowUTC4 = new Date(now.getTime() + UTC4_OFFSET);
+
+  // Calculate next midnight in UTC-4
+  const nextMidnight = new Date(nowUTC4);
+  nextMidnight.setUTCHours(24, 0, 0, 0); // next day at 00:00
+  const msUntilMidnight = nextMidnight.getTime() - nowUTC4.getTime();
+
+  console.log(`⏰ Manual call stats reset scheduled in ${(msUntilMidnight / 1000 / 60).toFixed(0)} minutes`);
+
+  setTimeout(async () => {
+    await resetManualCallStats();
+    // Then repeat every 24 hours
+    setInterval(resetManualCallStats, 24 * 60 * 60 * 1000);
+  }, msUntilMidnight);
+}
+
+async function resetManualCallStats() {
+  try {
+    const result = await db.collection("users").updateMany(
+      { manualCallStats: { $exists: true } },
+      { $set: { manualCallStats: {} } }
+    );
+    console.log(`🔄 Manual call stats reset for ${result.modifiedCount} users at ${new Date().toISOString()}`);
+  } catch (err) {
+    console.error("Error resetting manual call stats:", err);
+  }
+}
+
+// Start the scheduler after DB connection is established
+scheduleManualCallsReset();
 
 // ==========================================
 // INTEGRACIÓN CON RINGCENTRAL
