@@ -37,6 +37,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (Nginx) — required for express-rate-limit behind reverse proxy
 
 // Configure EJS
 app.set("view engine", "ejs");
