@@ -889,13 +889,27 @@ async function uploadLeads() {
             method: 'POST',
             body: formData
         });
-        const result = await resp.json();
+        if (resp.status === 413) {
+            showToast('File too large. Please upload a smaller CSV or increase server limit.', 'error');
+            return;
+        }
+        let result;
+        try {
+            result = await resp.json();
+        } catch (parseErr) {
+            console.error('Upload response was not JSON. Status:', resp.status);
+            showToast(`Server error (${resp.status}). Check Nginx/server logs.`, 'error');
+            return;
+        }
         if (resp.ok) {
-            showToast(result.message);
+            showToast(result.message, 'success');
             fileInput.value = '';
             loadAllLeads(); loadFilterOptions();
-        } else { showToast(`Error: ${result.error || 'Upload failed'}`); }
-    } catch (err) { showToast('Connection error while uploading leads.'); }
+        } else { showToast(`Error: ${result.error || 'Upload failed'}`, 'error'); }
+    } catch (err) {
+        console.error('Upload error:', err);
+        showToast('Connection error while uploading leads.', 'error');
+    }
 }
 
 async function loadAnalyticsDashboard() {
