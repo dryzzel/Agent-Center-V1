@@ -581,9 +581,20 @@ app.post("/admin/assign", authAdmin, async (req, res) => {
   try {
     const leadIds = leadsToAssign.map(id => new ObjectId(id));
 
+    // Clear old disposition data so the new agent starts with a clean lead.
+    // The history array is preserved for admin audit trail.
     await db.collection("leads").updateMany(
       { _id: { $in: leadIds } },
-      { $set: { assignedTo: new ObjectId(userId) } }
+      {
+        $set: {
+          assignedTo: new ObjectId(userId),
+          DISPOSITION: null,
+          notes: null,
+          callback: null,
+          language: null,
+          Timestamp: new Date().toISOString()
+        }
+      }
     );
 
     res.json({ success: true, message: "Leads assigned successfully." });
@@ -789,9 +800,20 @@ app.post("/admin/leads/reassign", authAdmin, async (req, res) => {
       objectNewUserId = new ObjectId(newUserId);
     }
 
+    // Clear old disposition data so the new agent starts with a clean lead.
+    // The history array is preserved for admin audit trail.
     await db.collection("leads").updateMany(
       { _id: { $in: objectLeadIds } },
-      { $set: { assignedTo: objectNewUserId } }
+      {
+        $set: {
+          assignedTo: objectNewUserId,
+          DISPOSITION: null,
+          notes: null,
+          callback: null,
+          language: null,
+          Timestamp: new Date().toISOString()
+        }
+      }
     );
 
     res.json({ success: true, message: "Leads reassigned successfully." });
