@@ -77,6 +77,18 @@ export function initializeApp() {
         document.getElementById('leadHistoryModal').style.display = 'none';
     };
 
+    // Session History Modal Listeners
+    const openSessionHistoryBtn = document.getElementById('openSessionHistoryBtn');
+    if (openSessionHistoryBtn) openSessionHistoryBtn.addEventListener('click', () => {
+        document.getElementById('sessionHistoryModal').style.display = 'flex';
+        if (window.feather) feather.replace();
+    });
+
+    const closeSessionHistoryBtn = document.getElementById('closeSessionHistoryBtn');
+    if (closeSessionHistoryBtn) closeSessionHistoryBtn.addEventListener('click', () => {
+        document.getElementById('sessionHistoryModal').style.display = 'none';
+    });
+
     // Floating Dialer Listeners
     initializeDialer();
 }

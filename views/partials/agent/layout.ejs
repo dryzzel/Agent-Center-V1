@@ -27,11 +27,11 @@
             <div id="counters"></div>
         </div>
 
-        <h3 class="panel-subtitle"><i data-feather="book-open"></i> History</h3>
-        <div id="history">No records yet.</div>
+        <button id="openSessionHistoryBtn" class="session-history-btn">
+            <i data-feather="book-open"></i> Session History
+        </button>
+
         <div class="button-group">
-            <button id="clearHistoryBtn" class="small-btn danger-btn"><i data-feather="trash-2"></i> Clear
-                History</button>
             <button id="clearDispositionBtn" class="small-btn danger-btn" style="display:none;"><i
                     data-feather="trash"></i>
                 Clear Stats</button>
@@ -101,6 +101,22 @@
             <button id="exportCallbacksBtn" class="small-btn"><i data-feather="download"></i> Export</button>
             <div id="callbacksList" style="max-height: 400px; overflow-y: auto;">
                 <p style="text-align: center; color: var(--subtext);">No pending callbacks</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session History Modal -->
+    <div id="sessionHistoryModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 560px;">
+            <h2 class="section-title"><i data-feather="book-open"></i> Session History</h2>
+            <div id="history" style="max-height: 50vh; overflow-y: auto; margin-bottom: 20px;">No records yet.</div>
+            <div class="modal-actions" style="justify-content: space-between;">
+                <button id="clearHistoryBtn" class="small-btn danger-btn" style="width: auto; padding: 10px 20px;">
+                    <i data-feather="trash-2"></i> Clear History
+                </button>
+                <button id="closeSessionHistoryBtn" class="login-btn secondary-btn">
+                    <i data-feather="x"></i> Close
+                </button>
             </div>
         </div>
     </div>
